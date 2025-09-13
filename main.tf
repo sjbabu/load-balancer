@@ -22,6 +22,7 @@ resource "aws_internet_gateway" "prodigw" {
 resource "aws_subnet" "public_subnet1" {
   vpc_id     = aws_vpc.prod.id
   cidr_block = var.subnet_cidr
+  availability_zone = "ap-south-1a"
   tags = {
     Name = "prod-public_subnet_1"
   }
@@ -54,6 +55,7 @@ resource "aws_route_table_association" "name" {
 resource "aws_subnet" "subnet2" {
   vpc_id     = aws_vpc.prod.id
   cidr_block = "10.0.2.0/24"
+  availability_zone = "ap-south-1b"
 
 
   tags = {
@@ -70,10 +72,17 @@ resource "aws_route_table_association" "RT" {
 
 resource "aws_instance" "web1" {
   ami               = "ami-02d26659fd82cf299"
-  instance_type     = "t2.micro"
+  instance_type     = "t3.micro"
   subnet_id         = aws_subnet.public_subnet1.id
-  availability_zone = "ap-south-1a"
-
+  associate_public_ip_address = true
+  availability_zone = "ap-south-1a" 
+  user_data = <<-EOF
+              #!/bin/bash
+              sudo apt update -y
+              sudo apt install nginx -y
+              sudo systemctl start nginx
+              sudo systemctl enable nginx
+              EOF
   tags = {
     web = "prod server 1"
   }
@@ -82,10 +91,17 @@ resource "aws_instance" "web1" {
 
 resource "aws_instance" "web2" {
   ami               = "ami-02d26659fd82cf299"
-  instance_type     = "t2.micro"
+  instance_type     = "t3.micro"
   subnet_id         = aws_subnet.subnet2.id
   availability_zone = "ap-south-1b"
-
+  associate_public_ip_address = true
+  user_data = <<-EOF
+              #!/bin/bash
+              sudo apt update -y
+              sudo apt install nginx -y
+              sudo systemctl start nginx
+              sudo systemctl enable nginx
+              EOF
   tags = {
     web = "prod server 2"
   }
@@ -164,7 +180,7 @@ resource "aws_security_group_rule" "allow_all_outbound_alb" {
 resource "aws_lb_target_group" "tg" {
   name     = "test-load"
   port     = 80
-  protocol = "TCP"
+  protocol = "HTTP"
   vpc_id   = aws_vpc.prod.id
   health_check {
     path                = "/"
